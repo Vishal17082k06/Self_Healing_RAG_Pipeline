@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  # LLM Tracing
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: arize_phoenix
+    ports:
+      - "6006:6006" # UI Dashboard
+      - "4317:4317" # LLM trace data
+    restart: always
+
+  # Experiment & Score Tracker
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow_server
+    ports:
+      - "5000:5000" # UI Dashboard
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+    restart: always

@@ -1,0 +1,17 @@
+# Web Server
+fastapi
+uvicorn
+python-multipart
+
+# AI & Database
+openai
+chromadb
+langchain
+
+# MLOps Tools
+mlflow
+arize-phoenix
+openinference-instrumentation-fastapi
+openinference-instrumentation-openai
+dvc
+ragas
