@@ -1,5 +1,7 @@
 # Environment variables
 .env
+mlflow_data/
+phoenix_data/
 
 # Python
 __pycache__/
