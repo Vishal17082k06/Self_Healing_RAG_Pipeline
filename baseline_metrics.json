@@ -1,0 +1,14 @@
+{
+  "faithfulness": 0.93,
+  "context_recall": 0.97,
+  "context_precision": 0.92,
+  "answer_relevancy_overall": 0.79,
+  "answer_relevancy_answerable": 0.99,
+  "thresholds": {
+    "faithfulness_min": 0.80,
+    "context_recall_min": 0.80,
+    "context_precision_min": 0.80,
+    "answer_relevancy_answerable_min": 0.85
+  },
+  "note": "answer_relevancy_overall is not used for healing triggers — it conflates correct refusals with poor answers. answer_relevancy_answerable is computed only on questions expected to have a real answer and is safe to use as a trigger threshold."
+}

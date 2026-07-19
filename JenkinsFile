@@ -1,0 +1,83 @@
+pipeline {
+    agent any
+
+    environment {
+        OPENAI_API_KEY = credentials('openai-api-key')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build App Image') {
+            steps {
+                sh 'docker compose build rag_app'
+            }
+        }
+
+        stage('Start Stack') {
+            steps {
+                sh 'docker compose up -d mlflow phoenix rag_app'
+                sh 'sleep 15' // give the app time to build the vector store and start
+            }
+        }
+
+        stage('Run Evaluation') {
+            steps {
+                sh '''
+                    docker compose exec -T rag_app python eval.py
+                '''
+            }
+        }
+
+        stage('Check Quality Gate') {
+            steps {
+                script {
+                    def result = sh(
+                        script: '''
+                            docker compose exec -T rag_app python -c "
+import mlflow
+mlflow.set_tracking_uri('http://mlflow:5000')
+client = mlflow.tracking.MlflowClient()
+exp = client.get_experiment_by_name('Event_Chatbot_Evaluations')
+run = client.search_runs([exp.experiment_id], order_by=['start_time DESC'], max_results=1)[0]
+m = run.data.metrics
+import json
+baseline = json.load(open('baseline_metrics.json'))
+t = baseline['thresholds']
+issues = []
+if m.get('faithfulness', 1) < t['faithfulness_min']: issues.append('faithfulness')
+if m.get('context_recall', 1) < t['context_recall_min']: issues.append('context_recall')
+if m.get('context_precision', 1) < t['context_precision_min']: issues.append('context_precision')
+if m.get('answer_relevancy_answerable', 1) < t['answer_relevancy_answerable_min']: issues.append('answer_relevancy_answerable')
+if issues:
+    print('QUALITY GATE FAILED: ' + str(issues))
+    exit(1)
+print('QUALITY GATE PASSED')
+"
+                        ''',
+                        returnStatus: true
+                    )
+                    if (result != 0) {
+                        error("Quality gate failed — evaluation metrics below baseline threshold")
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker compose down'
+        }
+        success {
+            echo 'Pipeline passed — quality gate green.'
+        }
+        failure {
+            echo 'Pipeline failed — check evaluation metrics.'
+        }
+    }
+}

@@ -14,19 +14,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from openinference.instrumentation.langchain import LangChainInstrumentor
-
-phoenix_endpoint = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "http://127.0.0.1:4317")
-os.environ["PHOENIX_COLLECTOR_ENDPOINT"] = phoenix_endpoint
-LangChainInstrumentor().instrument()
-
 from phoenix.otel import register
+from openinference.instrumentation.langchain import LangChainInstrumentor
 
 tracer_provider = register(
     project_name="SelfHealingRAG",
     endpoint=os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "http://127.0.0.1:6006/v1/traces"),
-    auto_instrument=True,  # auto-detects and instruments installed libraries, including LangChain
+    batch=True,
 )
+LangChainInstrumentor().instrument(tracer_provider=tracer_provider)
+
 
 # --- MLflow setup ---
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
@@ -44,26 +41,26 @@ CHUNK_OVERLAP = 50
 EMBEDDING_MODEL = "text-embedding-ada-002"  # default OpenAIEmbeddings model
 LLM_MODEL = "gpt-3.5-turbo"
 
-def initialize_vector_db():
-    if os.path.exists("./chroma_db"):
+def build_vector_db(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP, force_rebuild=False):
+    if os.path.exists("./chroma_db") and not force_rebuild:
         print("Loading existing ChromaDB...")
-        vectorstore = Chroma(
-            persist_directory="./chroma_db",
-            embedding_function=OpenAIEmbeddings()
-        )
-        return vectorstore, False  # False = not freshly built
+        return Chroma(persist_directory="./chroma_db", embedding_function=OpenAIEmbeddings())
 
-    print("Building new ChromaDB from source documents...")
+    if force_rebuild and os.path.exists("./chroma_db"):
+        import shutil
+        print(f"Rebuilding ChromaDB (chunk_size={chunk_size}, overlap={chunk_overlap})...")
+        shutil.rmtree("./chroma_db")
+
     with mlflow.start_run(run_name="ingestion"):
-        mlflow.log_param("chunk_size", CHUNK_SIZE)
-        mlflow.log_param("chunk_overlap", CHUNK_OVERLAP)
+        mlflow.log_param("chunk_size", chunk_size)
+        mlflow.log_param("chunk_overlap", chunk_overlap)
         mlflow.log_param("embedding_model", EMBEDDING_MODEL)
-        mlflow.log_param("source_file", "data/event_schedule.md")
+        mlflow.log_param("triggered_by", "self_healing" if force_rebuild else "initial_build")
 
         start = time.time()
         loader = TextLoader("data/event_schedule.md")
         documents = loader.load()
-        text_splitter = CharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+        text_splitter = CharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         chunks = text_splitter.split_documents(documents)
 
         vectorstore = Chroma.from_documents(
@@ -76,9 +73,9 @@ def initialize_vector_db():
         mlflow.log_metric("num_chunks", len(chunks))
         mlflow.log_metric("ingestion_time_seconds", ingestion_time)
 
-    return vectorstore, True
+    return vectorstore
 
-vectorstore, was_freshly_built = initialize_vector_db()
+vectorstore = build_vector_db()
 retriever = vectorstore.as_retriever()
 
 llm = ChatOpenAI(model=LLM_MODEL, temperature=0)

@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.git/
+.gitignore
+mlflow_data/
+phoenix_data/
+.dvc/cache
+chroma_db/
+README.md

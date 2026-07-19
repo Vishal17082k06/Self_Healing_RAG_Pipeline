@@ -1,62 +1,77 @@
 [
   {
     "question": "Where is the Next-Gen AI Hackathon being held?",
-    "ground_truth": "Computer Lab 3, CSE Block"
+    "ground_truth": "Computer Lab 3, CSE Block",
+    "expects_refusal": false
   },
   {
     "question": "What time does the Next-Gen AI Hackathon start and end?",
-    "ground_truth": "09:30 AM to 04:30 PM"
+    "ground_truth": "09:30 AM to 04:30 PM",
+    "expects_refusal": false
   },
   {
     "question": "How many members can be on a team for the hackathon?",
-    "ground_truth": "Maximum 3 members per team"
+    "ground_truth": "Maximum 3 members per team",
+    "expects_refusal": false
   },
   {
     "question": "Can I use pre-trained models in the hackathon?",
-    "ground_truth": "Yes, pre-trained models are allowed, but API keys must be self-provisioned by the participant"
+    "ground_truth": "Yes, pre-trained models are allowed, but API keys must be self-provisioned by the participant",
+    "expects_refusal": false
   },
   {
     "question": "Who is the guest speaker for the Generative AI track?",
-    "ground_truth": "The Chief AI Architect from NVIDIA India"
+    "ground_truth": "The Chief AI Architect from NVIDIA India",
+    "expects_refusal": false
   },
   {
     "question": "Where is the Generative AI & MLOps paper presentation track happening?",
-    "ground_truth": "Main Auditorium (Kalaivanar Arangam)"
+    "ground_truth": "Main Auditorium (Kalaivanar Arangam)",
+    "expects_refusal": false
   },
   {
     "question": "What time is the Generative AI & MLOps track scheduled?",
-    "ground_truth": "11:00 AM to 01:00 PM"
+    "ground_truth": "11:00 AM to 01:00 PM",
+    "expects_refusal": false
   },
   {
     "question": "Where can I find the food court?",
-    "ground_truth": "Main Campus Ground, opposite to the Amenities Center"
+    "ground_truth": "Main Campus Ground, opposite to the Amenities Center",
+    "expects_refusal": false
   },
   {
     "question": "Where is the registration/help desk located?",
-    "ground_truth": "Registration counters are located at the college main entrance"
+    "ground_truth": "Registration counters are located at the college main entrance",
+    "expects_refusal": false
   },
   {
     "question": "What is the name of the flagship hackathon event at Technical Fest 2026?",
-    "ground_truth": "Next-Gen AI Hackathon"
+    "ground_truth": "Next-Gen AI Hackathon",
+    "expects_refusal": false
   },
   {
     "question": "Do I need my own API keys for the hackathon if I use pre-trained models?",
-    "ground_truth": "Yes, API keys must be self-provisioned even if pre-trained models are used"
+    "ground_truth": "Yes, API keys must be self-provisioned even if pre-trained models are used",
+    "expects_refusal": false
   },
   {
     "question": "Which company is the Generative AI track's guest speaker from?",
-    "ground_truth": "NVIDIA India"
+    "ground_truth": "NVIDIA India",
+    "expects_refusal": false
   },
   {
     "question": "What is the venue for paper presentations, and does it differ from the hackathon venue?",
-    "ground_truth": "Paper presentations are at the Main Auditorium (Kalaivanar Arangam), which is different from the hackathon venue at Computer Lab 3, CSE Block"
+    "ground_truth": "Paper presentations are at the Main Auditorium (Kalaivanar Arangam), which is different from the hackathon venue at Computer Lab 3, CSE Block",
+    "expects_refusal": false
   },
   {
     "question": "Is there a workshop on quantum computing at the fest?",
-    "ground_truth": "The schedule does not mention any quantum computing workshop"
+    "ground_truth": "The schedule does not mention any quantum computing workshop",
+    "expects_refusal": true
   },
   {
     "question": "What is the registration fee for the Next-Gen AI Hackathon?",
-    "ground_truth": "The schedule does not mention a registration fee"
+    "ground_truth": "The schedule does not mention a registration fee",
+    "expects_refusal": true
   }
 ]

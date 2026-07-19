@@ -2,6 +2,7 @@
 .env
 mlflow_data/
 phoenix_data/
+jenkins_data/
 
 # Python
 __pycache__/

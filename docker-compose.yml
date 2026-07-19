@@ -1,6 +1,17 @@
 version: '3.8'
 
 services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    privileged: true
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - ./jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
   phoenix:
     image: arizephoenix/phoenix:latest
     container_name: arize_phoenix
@@ -26,4 +37,18 @@ services:
       --port 5000
       --backend-store-uri sqlite:////mlflow/mlflow.db
       --default-artifact-root /mlflow/artifacts
+      --allowed-hosts "mlflow,mlflow:5000,localhost,localhost:5000,127.0.0.1,127.0.0.1:5000"
+    restart: always
+  rag_app:
+    build: .
+    container_name: rag_app
+    ports:
+      - "8000:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - PHOENIX_COLLECTOR_ENDPOINT=http://phoenix:6006/v1/traces
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - mlflow
+      - phoenix
     restart: always
