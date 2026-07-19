@@ -1,0 +1,4 @@
+[core]
+    remote = origin
+['remote "origin"']
+    url = https://dagshub.com/vpnvishal3/Self_Healing_RAG_Pipeline.dvc
