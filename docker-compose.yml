@@ -1,20 +1,9 @@
 version: '3.8'
 
 services:
-  jenkins:
-    image: jenkins/jenkins:lts
-    container_name: jenkins
-    privileged: true
-    ports:
-      - "8080:8080"
-      - "50000:50000"
-    volumes:
-      - ./jenkins_data:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-    restart: always
   phoenix:
     image: arizephoenix/phoenix:latest
-    container_name: arize_phoenix
+    #container_name: arize_phoenix
     ports:
       - "6006:6006"
       - "4317:4317"
@@ -26,7 +15,7 @@ services:
 
   mlflow:
     image: ghcr.io/mlflow/mlflow:latest
-    container_name: mlflow_server
+    #container_name: mlflow_server
     ports:
       - "5000:5000"
     volumes:
@@ -41,7 +30,7 @@ services:
     restart: always
   rag_app:
     build: .
-    container_name: rag_app
+    #: rag_app
     ports:
       - "8000:8000"
     environment:

@@ -1,3 +1,4 @@
+import os
 import json
 import requests
 import mlflow
@@ -8,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000"))
 mlflow.set_experiment("Event_Chatbot_Evaluations")
 
 def run_evaluation():
