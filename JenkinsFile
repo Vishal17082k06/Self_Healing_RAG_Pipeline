@@ -21,7 +21,16 @@ pipeline {
         stage('Start Stack') {
             steps {
                 sh 'docker compose up -d mlflow phoenix rag_app'
-                sh 'sleep 15' // give the app time to build the vector store and start
+                sh '''
+                  for i in $(seq 1 30); do
+                    if docker compose exec -T rag_app curl -s http://127.0.0.1:8000/docs > /dev/null; then
+                      echo "App is ready"
+                      break
+                    fi
+                    echo "Waiting for app to start..."
+                    sleep 2
+                  done
+                '''
             }
         }
 
