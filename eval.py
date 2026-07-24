@@ -26,10 +26,14 @@ def run_evaluation():
         expects_refusal = item.get("expects_refusal", False)
 
         response = requests.post(
-            "http://127.0.0.1:8000/chat",
-            json={"question": question}
+        "http://127.0.0.1:8000/chat",
+        json={"question": question}
         )
         result = response.json()
+
+        if response.status_code != 200:
+            raise RuntimeError(f"Chat request failed ({response.status_code}): {result.get('detail', result)}")
+
         bot_answer = result["answer"]
         contexts = result["contexts"]
 
