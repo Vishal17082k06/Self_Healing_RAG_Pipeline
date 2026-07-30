@@ -6,23 +6,9 @@ pipeline {
     }
 
     stages {
-        stage('Checkout & Sync Data') {
+        stage('Checkout Code') {
             steps {
                 checkout scm
-                sh 'dvc pull || echo "DVC pull skipped or no remote configured"'
-            }
-        }
-
-        stage('Run Unit & Logic Tests') {
-            steps {
-                sh '''
-                    if [ -d "venv" ]; then
-                        . venv/bin/activate
-                        pytest tests/ --maxfail=1 --disable-warnings || true
-                    else
-                        echo "No local venv found, skipping pre-build pytest."
-                    fi
-                '''
             }
         }
 
@@ -32,9 +18,12 @@ pipeline {
             }
         }
 
-        stage('Start Stack') {
+        stage('Start Stack & Sync Data') {
             steps {
                 sh 'docker compose up -d mlflow phoenix rag_app'
+                
+                sh 'docker compose exec -T rag_app dvc pull || echo "DVC pull skipped or no remote configured"'
+
                 sh '''
                   for i in $(seq 1 30); do
                     if docker compose exec -T rag_app curl -s http://127.0.0.1:8000/docs > /dev/null; then
@@ -51,7 +40,7 @@ pipeline {
         stage('Run Container Integration Tests') {
             steps {
                 sh '''
-                    docker compose exec -T rag_app pytest -v || echo "Container unit tests completed."
+                    docker compose exec -T -e PYTHONPATH=. rag_app pytest -v || echo "Container unit tests completed with warnings."
                 '''
             }
         }
