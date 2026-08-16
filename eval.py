@@ -1,13 +1,33 @@
 import os
+
+# On Windows, importing mlflow before torch corrupts torch's DLL loading (see main.py for
+# details) and crashes the first time HuggingFaceEmbeddings pulls torch in later.
+import torch  # noqa: F401
+
 import json
 import requests
 import mlflow
 from datasets import Dataset
 from ragas import evaluate
 from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
+from ragas.run_config import RunConfig
+from langchain_groq import ChatGroq
+from langchain_huggingface import HuggingFaceEmbeddings
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Ragas defaults to OpenAI (ChatOpenAI + OpenAIEmbeddings) for grading if no llm/embeddings
+# are passed to evaluate() — independent of whatever LLM/embeddings the app under test uses.
+# Point it at Groq + the same local embedding model main.py uses so grading has no OpenAI
+# dependency. Groq's free tier has much stricter rate limits than OpenAI, so run_config caps
+# concurrency low and gives retries more room.
+JUDGE_LLM_MODEL = "llama-3.3-70b-versatile"
+JUDGE_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
+judge_llm = ChatGroq(model=JUDGE_LLM_MODEL, temperature=0, api_key=os.getenv("GROQ_API_KEY"))
+judge_embeddings = HuggingFaceEmbeddings(model_name=JUDGE_EMBEDDING_MODEL)
+judge_run_config = RunConfig(max_workers=2, max_wait=90, max_retries=5)
 
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000"))
 mlflow.set_experiment("Event_Chatbot_Evaluations")
@@ -59,6 +79,9 @@ def run_evaluation():
     results = evaluate(
         eval_dataset,
         metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
+        llm=judge_llm,
+        embeddings=judge_embeddings,
+        run_config=judge_run_config,
     )
 
     scores = results.to_pandas()
