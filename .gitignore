@@ -57,3 +57,4 @@ chroma_db/
 # DVC
 .dvc/cache
 /chroma_db
+feedback.db

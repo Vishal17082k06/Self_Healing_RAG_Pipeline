@@ -9,16 +9,20 @@ httpx==0.27.2
 # AI & Database
 openai==1.12.0
 chromadb==0.4.24
-langchain==0.1.9
+onnxruntime==1.17.3          
 langchain-community==0.0.24
 langchain-chroma==0.1.0
 langchain-openai==0.0.8
+langchain-groq==0.1.3
+langchain-huggingface==0.0.3
+sentence-transformers==2.7.0
 langchain-text-splitters==0.0.1
 langgraph==0.0.32
 openinference-instrumentation-langchain==0.1.29
 
 # MLOps Tools
 mlflow==2.11.1
+setuptools<81               
 arize-phoenix-otel==0.5.1
 dvc==3.44.0
 

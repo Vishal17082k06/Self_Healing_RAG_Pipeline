@@ -3,6 +3,7 @@ import os
 import json
 import subprocess
 import mlflow
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,6 +12,8 @@ mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000"))
 mlflow.set_experiment("Self_Healing_Monitor")
 
 MAX_HEALING_ATTEMPTS = 2
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+RAG_APP_URL = os.getenv("RAG_APP_URL", "http://127.0.0.1:8000")
 
 # Strategy bank to attempt sequentially if baseline drops
 HEALING_STRATEGIES = [
@@ -58,6 +61,22 @@ def check_degradation(current_scores, baseline):
 
     return issues
 
+def trigger_index_reload():
+    """Tells the already-running rag_app to atomically swap in the newly built
+    index version, so healing takes effect without restarting the app."""
+    try:
+        resp = requests.post(
+            f"{RAG_APP_URL}/admin/reload-index",
+            headers={"X-Admin-Token": ADMIN_TOKEN},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            print(f"Index reload triggered successfully: {resp.json()}")
+        else:
+            print(f"Index reload failed ({resp.status_code}): {resp.text}")
+    except requests.RequestException as e:
+        print(f"Could not reach rag_app to trigger index reload: {e}")
+
 def apply_healing_strategy(strategy, issues):
     """Executes vector store rebuild using a specific strategy."""
     print(f"\nTriggering self-healing: rebuilding vector store with {strategy['name']}...")
@@ -71,10 +90,11 @@ def apply_healing_strategy(strategy, issues):
 
         from main import build_vector_db
         build_vector_db(
-            chunk_size=strategy["chunk_size"], 
-            chunk_overlap=strategy["chunk_overlap"], 
+            chunk_size=strategy["chunk_size"],
+            chunk_overlap=strategy["chunk_overlap"],
             force_rebuild=True
         )
+        trigger_index_reload()
 
         mlflow.log_metric("healing_triggered", 1)
 
