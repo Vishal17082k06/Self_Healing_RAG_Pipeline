@@ -10,5 +10,6 @@
     "context_precision_min": 0.80,
     "answer_relevancy_answerable_min": 0.85
   },
-  "note": "answer_relevancy_overall is not used for healing triggers — it conflates correct refusals with poor answers. answer_relevancy_answerable is computed only on questions expected to have a real answer and is safe to use as a trigger threshold."
+  "questions_hash": "09b10baf5c45948fc9d1a1de02e3f1a6cefba39a5f7734334bad5d44a1322c54",
+  "note": "answer_relevancy_overall is not used for healing triggers — it conflates correct refusals with poor answers. answer_relevancy_answerable is computed only on questions expected to have a real answer and is safe to use as a trigger threshold. questions_hash is the sha256 of test_questions.json at the time these thresholds were calibrated — monitor.py warns (does not fail) if it no longer matches, see generate_eval_questions.py."
 }

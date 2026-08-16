@@ -6,6 +6,7 @@ import os
 # or via `from main import build_vector_db` in apply_healing_strategy().
 import torch  # noqa: F401
 
+import hashlib
 import json
 import math
 import subprocess
@@ -31,6 +32,19 @@ HEALING_STRATEGIES = [
 def load_baseline():
     with open("baseline_metrics.json", "r") as f:
         return json.load(f)
+
+def check_questions_staleness(baseline, current_questions_hash):
+    """Warns (does not fail the build) when test_questions.json has changed since
+    baseline_metrics.json's thresholds were last calibrated against it — see
+    generate_eval_questions.py, which stamps questions_hash on re-baseline."""
+    baseline_hash = baseline.get("questions_hash")
+    if baseline_hash != current_questions_hash:
+        return (
+            "test_questions.json does not match the golden set baseline_metrics.json was "
+            "calibrated against (questions_hash mismatch) — thresholds may be stale. "
+            "Re-run eval.py and update baseline_metrics.json's questions_hash."
+        )
+    return None
 
 def run_eval_and_get_scores():
     """Runs eval.py as a subprocess and pulls the latest MLflow run's metrics."""
@@ -112,8 +126,15 @@ def apply_healing_strategy(strategy, issues):
 
 def run_monitor():
     baseline = load_baseline()
-    
+
     with mlflow.start_run(run_name="monitor_check"):
+        with open("test_questions.json", "rb") as f:
+            current_questions_hash = hashlib.sha256(f.read()).hexdigest()
+        staleness_warning = check_questions_staleness(baseline, current_questions_hash)
+        if staleness_warning:
+            print(f"\n WARNING: {staleness_warning}")
+            mlflow.set_tag("questions_hash_stale", True)
+
         # 1. Initial Evaluation Pass
         current_scores = run_eval_and_get_scores()
         print(f"\nCurrent scores: {current_scores}")

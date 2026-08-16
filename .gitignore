@@ -58,3 +58,5 @@ chroma_db/
 .dvc/cache
 /chroma_db
 feedback.db
+
+PROJECT_CONTEXT.md
