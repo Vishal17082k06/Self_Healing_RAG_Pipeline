@@ -1,6 +1,13 @@
 import sys
 import os
+
+# On Windows, importing mlflow before torch corrupts torch's DLL loading (see main.py for
+# details) and crashes the first time this process later imports torch — either directly
+# or via `from main import build_vector_db` in apply_healing_strategy().
+import torch  # noqa: F401
+
 import json
+import math
 import subprocess
 import mlflow
 import requests
@@ -40,24 +47,29 @@ def run_eval_and_get_scores():
     latest_run = runs[0]
     return latest_run.data.metrics
 
+def _is_missing(value):
+    """True for None or NaN — Ragas returns NaN for any row a metric job failed on
+    (rate limits, timeouts, parse errors), and `NaN < threshold` is always False in
+    Python, so an unguarded comparison would silently treat a failed eval as healthy."""
+    return value is None or (isinstance(value, float) and math.isnan(value))
+
+TRACKED_METRICS = [
+    ("faithfulness", "faithfulness_min"),
+    ("context_recall", "context_recall_min"),
+    ("context_precision", "context_precision_min"),
+    ("answer_relevancy_answerable", "answer_relevancy_answerable_min"),
+]
+
 def check_degradation(current_scores, baseline):
     thresholds = baseline["thresholds"]
     issues = []
 
-    if current_scores.get("faithfulness", 1.0) < thresholds["faithfulness_min"]:
-        issues.append(f"faithfulness dropped to {current_scores.get('faithfulness', 0):.2f} (min: {thresholds['faithfulness_min']})")
-
-    if current_scores.get("context_recall", 1.0) < thresholds["context_recall_min"]:
-        issues.append(f"context_recall dropped to {current_scores.get('context_recall', 0):.2f} (min: {thresholds['context_recall_min']})")
-
-    if current_scores.get("context_precision", 1.0) < thresholds["context_precision_min"]:
-        issues.append(f"context_precision dropped to {current_scores.get('context_precision', 0):.2f} (min: {thresholds['context_precision_min']})")
-
-    if current_scores.get("answer_relevancy_answerable", 1.0) < thresholds["answer_relevancy_answerable_min"]:
-        issues.append(
-            f"answer_relevancy_answerable dropped to {current_scores.get('answer_relevancy_answerable', 0):.2f} "
-            f"(min: {thresholds['answer_relevancy_answerable_min']})"
-        )
+    for metric_name, threshold_key in TRACKED_METRICS:
+        value = current_scores.get(metric_name)
+        if _is_missing(value):
+            issues.append(f"{metric_name} is missing/NaN — evaluation failed to produce a score, treating as a failure")
+        elif value < thresholds[threshold_key]:
+            issues.append(f"{metric_name} dropped to {value:.2f} (min: {thresholds[threshold_key]})")
 
     return issues
 
