@@ -17,6 +17,7 @@ import threading
 import uuid
 import mlflow
 from fastapi import FastAPI, HTTPException, Header
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import CharacterTextSplitter
@@ -51,6 +52,17 @@ mlflow.set_experiment("self-healing-rag")
 
 app = FastAPI(title="Event AI Assistant")
 
+# No frontend exists yet, and this is consumed locally (Swagger UI, curl, TestClient) —
+# browsers treat localhost/127.0.0.1 as different origins even on the same machine, which
+# breaks Swagger's "Try it out" with no server-side error at all without this. Tighten
+# allow_origins once a real frontend origin is known.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Validate API keys
 groq_key = os.getenv("GROQ_API_KEY")
 openai_key = os.getenv("OPENAI_API_KEY")
@@ -66,7 +78,7 @@ EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"  # free, runs locally
 def get_embeddings():
     return HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 PRIMARY_LLM_PROVIDER = "groq"
-PRIMARY_LLM_MODEL = "llama-3.3-70b-versatile"  # Groq's fast model
+PRIMARY_LLM_MODEL = "openai/gpt-oss-120b"  # Groq's recommended replacement for the deprecated llama-3.3-70b-versatile (retired 2026-06-17)
 FALLBACK_LLM_MODEL = "gpt-3.5-turbo"  # OpenAI fallback
 
 CHROMA_BASE_DIR = "./chroma_db"

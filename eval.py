@@ -22,7 +22,7 @@ load_dotenv()
 # Point it at Groq + the same local embedding model main.py uses so grading has no OpenAI
 # dependency. Groq's free tier has much stricter rate limits than OpenAI, so run_config caps
 # concurrency low and gives retries more room.
-JUDGE_LLM_MODEL = "llama-3.3-70b-versatile"
+JUDGE_LLM_MODEL = "openai/gpt-oss-120b"  # Groq's recommended replacement for the deprecated llama-3.3-70b-versatile (retired 2026-06-17)
 JUDGE_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 judge_llm = ChatGroq(model=JUDGE_LLM_MODEL, temperature=0, api_key=os.getenv("GROQ_API_KEY"))

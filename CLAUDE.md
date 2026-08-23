@@ -59,12 +59,27 @@ it conflates correct refusals (questions the bot should decline to answer) with 
 poor answers. Use `answer_relevancy_answerable` instead — see the note in
 `baseline_metrics.json`.
 
+**Golden eval set** (`test_questions.json`) is generated from `data/event_schedule.md` by
+`python generate_eval_questions.py` — it only calls the LLM when the source doc's hash has
+changed since the last run (tracked in `test_questions.meta.json`); `--force` overrides.
+Regenerating does **not** auto-update `baseline_metrics.json` — `monitor.py` warns (does
+not fail the build) if `test_questions.json`'s hash no longer matches
+`baseline_metrics.json`'s `questions_hash`, signaling a deliberate re-run of `eval.py` and
+re-stamp is needed before the thresholds can be trusted again.
+
 ## CI/CD (Jenkins)
 
 `JenkinsFile` runs on every build: builds the `rag_app` image, brings up the full docker
 compose stack, runs `dvc pull` for data sync, runs pytest inside the container, then runs
 `monitor.py` (the self-healing check), then re-queries the latest MLflow run as a final
 quality gate that fails the build if metrics are still below threshold after healing.
+
+Requires three Jenkins credentials (Secret text), injected via the pipeline's
+`environment {}` block and passed through to the `rag_app` container by
+`docker-compose.yml`'s `environment:` list: `openai-api-key`, `groq-api-key`,
+`admin-token`. `admin-token` must match whatever `main.py`'s `/admin/reload-index`
+checks against — without it, `monitor.py`'s reload call 403s silently and healing
+rebuilds never actually reach the running app (see `DEBUGGING_LOG.md` Case 09).
 
 ## Architecture
 

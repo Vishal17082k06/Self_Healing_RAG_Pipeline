@@ -37,6 +37,7 @@ services:
       - MLFLOW_TRACKING_URI=http://mlflow:5000
       - PHOENIX_COLLECTOR_ENDPOINT=http://phoenix:6006/v1/traces
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
       - ADMIN_TOKEN=${ADMIN_TOKEN}
       - RAG_APP_URL=http://127.0.0.1:8000
     depends_on:
