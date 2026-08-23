@@ -158,7 +158,7 @@ def build_vector_db(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP, force_re
     version_dir = os.path.join(CHROMA_BASE_DIR, new_version)
     print(f"Building ChromaDB version {new_version} (chunk_size={chunk_size}, overlap={chunk_overlap})...")
 
-    with mlflow.start_run(run_name="ingestion"):
+    with mlflow.start_run(run_name="ingestion", nested=True):
         mlflow.log_param("chunk_size", chunk_size)
         mlflow.log_param("chunk_overlap", chunk_overlap)
         mlflow.log_param("embedding_model", EMBEDDING_MODEL)
