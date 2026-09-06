@@ -9,7 +9,7 @@ httpx==0.27.2
 # AI & Database
 openai==1.12.0
 chromadb==0.4.24
-onnxruntime==1.17.3          
+onnxruntime==1.17.3
 langchain-community==0.0.24
 langchain-chroma==0.1.0
 langchain-openai==0.0.8
@@ -21,9 +21,14 @@ openinference-instrumentation-langchain==0.1.29
 
 # MLOps Tools
 mlflow-skinny==2.11.1
-setuptools<81               
+setuptools<81
 arize-phoenix-otel==0.5.1
 dvc==3.44.0
+# dvc's own pin (pathspec>=0.10.3) is too loose — pip resolves a newer pathspec whose
+# gitwildmatch module no longer has the private _DIR_MARK symbol dvc 3.44.0 imports,
+# crashing `dvc pull` with ImportError. Pinned to the version dvc was actually built
+# against.
+pathspec==0.11.2
 
 # Evaluation
 ragas==0.1.21

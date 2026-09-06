@@ -9,6 +9,7 @@ load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY", "mock-openai-key")
 os.environ["MLFLOW_TRACKING_URI"] = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
 
+import main
 from main import app, prompt, ChatRequest, format_docs
 
 
@@ -49,8 +50,8 @@ def api_client():
     return TestClient(app)
 
 
-@patch("main.retriever.invoke")
-@patch("main.llm.invoke")
+@patch.object(main.retriever.__class__, "invoke")
+@patch.object(main.llm.__class__, "invoke")
 def test_chat_endpoint_success(mock_llm_invoke, mock_retriever_invoke, api_client):
     """Test /chat POST endpoint with mocked retriever and LCEL chain execution."""
     # Mock retrieved context document
@@ -83,7 +84,7 @@ def test_chat_endpoint_invalid_payload(api_client):
     assert response.status_code == 422
 
 
-@patch("main.retriever.invoke")
+@patch.object(main.retriever.__class__, "invoke")
 def test_chat_endpoint_internal_error_handling(mock_retriever_invoke, api_client):
     """Verify /chat returns a 500 status code when an exception occurs internally."""
     mock_retriever_invoke.side_effect = Exception("ChromaDB connection timeout")

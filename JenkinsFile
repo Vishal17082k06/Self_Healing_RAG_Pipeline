@@ -27,14 +27,21 @@ pipeline {
                 sh 'docker compose exec -T rag_app dvc pull || echo "DVC pull skipped or no remote configured"'
 
                 sh '''
-                  for i in $(seq 1 30); do
+                  ready=false
+                  for i in $(seq 1 60); do
                     if docker compose exec -T rag_app curl -s http://127.0.0.1:8000/docs > /dev/null; then
                       echo "App is ready"
+                      ready=true
                       break
                     fi
-                    echo "Waiting for app to start..."
-                    sleep 2
+                    echo "Waiting for app to start... ($i/60)"
+                    sleep 3
                   done
+                  if [ "$ready" != "true" ]; then
+                    echo "App did not become ready within 180s — dumping logs for diagnosis:"
+                    docker compose logs rag_app --tail 100
+                    exit 1
+                  fi
                 '''
             }
         }
