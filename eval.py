@@ -11,7 +11,7 @@ from datasets import Dataset
 from ragas import evaluate
 from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
 from ragas.run_config import RunConfig
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from dotenv import load_dotenv
 
@@ -19,19 +19,26 @@ load_dotenv()
 
 # Ragas defaults to OpenAI (ChatOpenAI + OpenAIEmbeddings) for grading if no llm/embeddings
 # are passed to evaluate() — independent of whatever LLM/embeddings the app under test uses.
-# Point it at Groq + the same local embedding model main.py uses so grading has no OpenAI
-# dependency. Groq's free tier has much stricter rate limits than OpenAI, so run_config caps
-# concurrency low and gives retries more room.
-JUDGE_LLM_MODEL = "openai/gpt-oss-120b"  # Groq's recommended replacement for the deprecated
-# llama-3.3-70b-versatile (retired 2026-06-17). NOTE: Groq's 8000 TPM rate limit is
-# account-wide, not per-model — using a different model for the judge does NOT give it a
-# separate budget (verified directly: a never-before-called model showed already-high
-# "Used" tokens on its first request). See DEBUGGING_LOG.md Case 07.
+# Point it at Gemini + the same local embedding model main.py uses so grading has no OpenAI
+# dependency. Groq was dropped entirely (see main.py) after its free-tier rate limits (8000
+# TPM / 200000 TPD, account-wide) were being hit routinely under normal eval/CI load — see
+# DEBUGGING_LOG.md Case 07.
+JUDGE_LLM_MODEL = "gemini-3.6-flash"  # gemini-2.0-flash was retired; API's own 404 pointed here
 JUDGE_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
-judge_llm = ChatGroq(model=JUDGE_LLM_MODEL, temperature=0, api_key=os.getenv("GROQ_API_KEY"))
+judge_llm = ChatGoogleGenerativeAI(model=JUDGE_LLM_MODEL, temperature=0, google_api_key=os.getenv("GEMINI_API_KEY"))
 judge_embeddings = HuggingFaceEmbeddings(model_name=JUDGE_EMBEDDING_MODEL)
 judge_run_config = RunConfig(max_workers=2, max_wait=90, max_retries=5)
+
+# answer_relevancy defaults to strictness=3 (3 completions per call, averaged). Ragas'
+# is_multiple_completion_supported() only recognizes native OpenAI/VertexAI classes, so for
+# any other provider (Gemini included) it falls back to firing the same prompt 3 separate
+# times and merging the results via the provider's own _combine_llm_outputs(). We hit a real
+# bug in langchain_groq's version of that merge (dict += dict, TypeError) — see
+# DEBUGGING_LOG.md Case 07/12 — and there's no reason to assume another provider's merge
+# code is bug-free either. strictness=1 means only one completion, so that merge path is
+# never exercised at all; it also cuts this metric's call volume by 3x.
+answer_relevancy.strictness = 1
 
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000"))
 mlflow.set_experiment("Event_Chatbot_Evaluations")

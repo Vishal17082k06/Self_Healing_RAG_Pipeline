@@ -23,7 +23,7 @@ from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_chroma import Chroma
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -64,11 +64,11 @@ app.add_middleware(
 )
 
 # Validate API keys
-groq_key = os.getenv("GROQ_API_KEY")
+gemini_key = os.getenv("GEMINI_API_KEY")
 openai_key = os.getenv("OPENAI_API_KEY")
 
-if not groq_key and not openai_key:
-    raise ValueError("Either GROQ_API_KEY or OPENAI_API_KEY must be set in environment variables.")
+if not gemini_key and not openai_key:
+    raise ValueError("Either GEMINI_API_KEY or OPENAI_API_KEY must be set in environment variables.")
 
 # Config values pulled out so they're loggable, not buried as magic numbers
 CHUNK_SIZE = 500
@@ -77,9 +77,13 @@ EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"  # free, runs locally
 
 def get_embeddings():
     return HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-PRIMARY_LLM_PROVIDER = "groq"
-PRIMARY_LLM_MODEL = "openai/gpt-oss-120b"  # Groq's recommended replacement for the deprecated llama-3.3-70b-versatile (retired 2026-06-17)
-FALLBACK_LLM_MODEL = "gpt-3.5-turbo"  # OpenAI fallback
+# Groq was dropped (its free-tier rate limits — 8000 TPM / 200000 TPD, account-wide, not
+# per-model — were being hit routinely under normal eval/CI load; see DEBUGGING_LOG.md
+# Case 07). Gemini's free tier (Google AI Studio) has no ongoing cost and higher headroom.
+PRIMARY_LLM_PROVIDER = "gemini"
+PRIMARY_LLM_MODEL = "gemini-3.6-flash"  # gemini-2.0-flash was retired; API's own 404 pointed here
+FALLBACK_LLM_MODEL = "gpt-3.5-turbo"  # OpenAI fallback — kept wired even at $0 balance in
+# case credits get added later; costs nothing to leave it in place.
 
 CHROMA_BASE_DIR = "./chroma_db"
 CURRENT_VERSION_FILE = os.path.join(CHROMA_BASE_DIR, "current_version.txt")
@@ -89,17 +93,17 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 _retriever_lock = threading.Lock()
 
 def get_llm():
-    """Get LLM with Groq as primary and OpenAI as fallback"""
-    if PRIMARY_LLM_PROVIDER == "groq" and groq_key:
+    """Get LLM with Gemini as primary and OpenAI as fallback"""
+    if PRIMARY_LLM_PROVIDER == "gemini" and gemini_key:
         try:
-            print(f"Using Groq with model: {PRIMARY_LLM_MODEL}")
-            return ChatGroq(model=PRIMARY_LLM_MODEL, temperature=0, api_key=groq_key)
+            print(f"Using Gemini with model: {PRIMARY_LLM_MODEL}")
+            return ChatGoogleGenerativeAI(model=PRIMARY_LLM_MODEL, temperature=0, google_api_key=gemini_key)
         except Exception as e:
-            print(f"Groq initialization failed: {e}. Falling back to OpenAI...")
+            print(f"Gemini initialization failed: {e}. Falling back to OpenAI...")
             if openai_key:
                 print(f"Using OpenAI fallback with model: {FALLBACK_LLM_MODEL}")
                 return ChatOpenAI(model=FALLBACK_LLM_MODEL, temperature=0)
-            raise ValueError("Groq failed and no OpenAI key available for fallback")
+            raise ValueError("Gemini failed and no OpenAI key available for fallback")
     elif openai_key:
         print(f"Using OpenAI with model: {FALLBACK_LLM_MODEL}")
         return ChatOpenAI(model=FALLBACK_LLM_MODEL, temperature=0)
@@ -240,7 +244,7 @@ async def chat_endpoint(request: ChatRequest):
             mlflow.log_param("session_id", session_id)
             mlflow.log_param("message_id", message_id)
             mlflow.log_param("llm_provider", PRIMARY_LLM_PROVIDER)
-            mlflow.log_param("llm_model", PRIMARY_LLM_MODEL if PRIMARY_LLM_PROVIDER == "groq" else FALLBACK_LLM_MODEL)
+            mlflow.log_param("llm_model", PRIMARY_LLM_MODEL if PRIMARY_LLM_PROVIDER == "gemini" else FALLBACK_LLM_MODEL)
 
             start = time.time()
             retrieved_docs = retriever.invoke(request.question)
@@ -255,8 +259,8 @@ async def chat_endpoint(request: ChatRequest):
                     {"context": context, "question": request.question}
                 )
             except Exception as llm_error:
-                # If Groq fails, try OpenAI fallback
-                if PRIMARY_LLM_PROVIDER == "groq" and openai_key:
+                # If Gemini fails, try OpenAI fallback
+                if PRIMARY_LLM_PROVIDER == "gemini" and openai_key:
                     print(f"Primary LLM failed: {llm_error}. Attempting OpenAI fallback...")
                     mlflow.log_param("fallback_triggered", True)
                     fallback_llm = ChatOpenAI(model=FALLBACK_LLM_MODEL, temperature=0)

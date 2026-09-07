@@ -20,12 +20,15 @@ ENV PIP_DEFAULT_TIMEOUT=100
 # small embedding model on CPU. Installing the CPU-only build first satisfies that
 # constraint before requirements.txt is processed, so pip never reaches for the GPU
 # build — this is the largest single win for build time and image size.
-RUN pip install --no-cache-dir --retries 10 --timeout 100 \
+RUN pip install --no-cache-dir --retries 10 --timeout 100 --quiet \
     torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir --retries 10 --timeout 100 -r requirements.txt
+# --quiet: this step's per-package download/collect log was the single biggest
+# contributor to build logs too large to paste/diff in full — the install itself is
+# unaffected, this only trims progress-bar noise.
+RUN pip install --no-cache-dir --retries 10 --timeout 100 --quiet -r requirements.txt
 
 COPY . .
 

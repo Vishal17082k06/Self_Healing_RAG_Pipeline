@@ -15,7 +15,7 @@ chunking strategies and hot-swaps the new index into the running app — no rede
 # Start supporting services (MLflow tracking + Phoenix tracing)
 docker compose up -d mlflow phoenix
 
-# Run the app directly (needs GROQ_API_KEY and/or OPENAI_API_KEY in .env)
+# Run the app directly (needs GEMINI_API_KEY and/or OPENAI_API_KEY in .env)
 uvicorn main:app --reload
 
 # Or run the full stack in containers
@@ -76,7 +76,7 @@ quality gate that fails the build if metrics are still below threshold after hea
 
 Requires three Jenkins credentials (Secret text), injected via the pipeline's
 `environment {}` block and passed through to the `rag_app` container by
-`docker-compose.yml`'s `environment:` list: `openai-api-key`, `groq-api-key`,
+`docker-compose.yml`'s `environment:` list: `openai-api-key`, `gemini-api-key`,
 `admin-token`. `admin-token` must match whatever `main.py`'s `/admin/reload-index`
 checks against — without it, `monitor.py`'s reload call 403s silently and healing
 rebuilds never actually reach the running app (see `DEBUGGING_LOG.md` Case 09).
@@ -96,10 +96,12 @@ gated) is the only way to trigger this outside of process start; `monitor.py` ca
 remotely over HTTP after a successful healing rebuild, treating the app as a separate
 running service rather than importing it.
 
-**LLM fallback chain** — Groq (`llama-3.3-70b-versatile`) is primary for speed/cost;
-OpenAI (`gpt-3.5-turbo`) is the fallback, both at request-init time (`get_llm()`) and
+**LLM fallback chain** — Gemini (`gemini-2.0-flash`) is primary, free-tier with no ongoing
+cost; OpenAI (`gpt-3.5-turbo`) is the fallback, both at request-init time (`get_llm()`) and
 per-request if the primary call throws (`/chat` endpoint's inner try/except). Which path
-was used gets logged to MLflow (`fallback_triggered`, `actual_llm_used`).
+was used gets logged to MLflow (`fallback_triggered`, `actual_llm_used`). Groq was dropped
+entirely (see `DEBUGGING_LOG.md` Case 07) after its free-tier rate limits (8000 TPM /
+200000 TPD, account-wide) were being hit routinely under normal eval/CI load.
 
 **Observability is two-layered and intentionally separate**:
 - **Phoenix** (`phoenix.otel` + `openinference` LangChain instrumentor) — traces every
